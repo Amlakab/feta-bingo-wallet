@@ -1,0 +1,116 @@
+// server/index.ts
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import mongoose from 'mongoose';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
+import transactionRoutes from './routes/transactions';
+import authRoutes from './routes/auth';
+import gameRoutes from './routes/game';
+import gamesRoutes from './routes/games';
+import accountantRoutes from './routes/accountant';
+import walletRoutes from './routes/wallet';
+import adminRoutes from './routes/admin';
+import agentRoutes from './routes/agent';
+import userRoutes from './routes/user';
+import spinnerRoutes from './routes/spinner';
+import feedbackRoutes from './routes/feedback';
+import { connectDB } from './config/database';
+import { setupSocket } from './sockets/gameSocket';
+import { errorHandler } from './middleware/errorHandler';
+
+dotenv.config();
+
+const app = express();
+const server = createServer(app);
+
+// Socket.io setup with ALL origins permitted
+const io = new Server(server, {
+  cors: {
+    origin: "*", // Allow ALL origins
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    credentials: true,
+    allowedHeaders: ["*"] // Allow ALL headers
+  },
+  path: '/socket.io/',
+  transports: ['websocket', 'polling']
+});
+
+// Middleware - Allow ALL CORS origins
+app.use(cors({
+  origin: "*", // Allow ALL origins
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers", "*"]
+}));
+
+// Handle preflight requests for ALL routes
+app.options('*', cors({
+  origin: "*",
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["*"]
+}));
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Routes
+app.use('/api/user', userRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/game', gameRoutes);
+app.use('/api/wallet', walletRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/agent', agentRoutes);
+app.use('/api/games', gamesRoutes);
+app.use('/api/transactions', transactionRoutes);
+app.use('/api/feedback', feedbackRoutes);
+app.use('/api/accountants', accountantRoutes);
+app.use('/api/spinner', spinnerRoutes);
+
+// Enhanced health check endpoint
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'OK', 
+    message: 'Server is running',
+    cors: 'All origins permitted',
+    timestamp: new Date().toISOString(),
+    origin: req.headers.origin || 'Unknown'
+  });
+});
+
+// CORS test endpoint
+app.get('/api/cors-test', (req, res) => {
+  res.status(200).json({ 
+    message: 'CORS is working! All origins allowed.',
+    yourOrigin: req.headers.origin,
+    timestamp: new Date().toISOString(),
+    allowed: true
+  });
+});
+
+// WebSocket endpoint for clients that need raw WebSocket
+app.get('/ws', (req, res) => {
+  res.status(400).json({ error: 'Use Socket.io client instead' });
+});
+
+// Socket.io setup
+setupSocket(io);
+
+// Error handling middleware
+app.use(errorHandler);
+
+// Connect to database
+connectDB();
+
+const PORT = process.env.PORT || 3001;
+
+server.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🌐 CORS: ALL origins permitted`);
+  console.log(`🔧 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`✅ Health check: http://localhost:${PORT}/api/health`);
+  console.log(`✅ CORS test: http://localhost:${PORT}/api/cors-test`);
+  console.log(`📱 Mobile apps can connect from any origin`);
+});

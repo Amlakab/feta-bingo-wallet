@@ -11,7 +11,8 @@ import {
   changePassword,
   setWallet,
   minusWallet,
-  getUsersByAgentId
+  getUsersByAgentId,
+  syncEarnings
 } from '../controllers/userController';
 import { authenticate } from '../middleware/auth';
 
@@ -26,6 +27,7 @@ router.get('/', authenticate, getAllUsers);
 router.get('/:userId', authenticate, getUser);
 router.put('/wallet', authenticate, updateWallet);
 router.put('/earnings', authenticate, updateEarnings);
+router.put('/sync-earnings', syncEarnings);
 router.patch('/:userId/status', authenticate, updateUserStatus);
 router.delete('/:userId', authenticate, deleteUser);
 router.put('/change-password', authenticate, changePassword);

@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateEarnings = exports.getUsersByAgentId = exports.minusWallet = exports.setWallet = exports.updateWallet = exports.changePassword = exports.getUser = exports.getUserStatistics = exports.deleteUser = exports.updateUserStatus = exports.createUser = exports.getAllUsers = void 0;
+exports.syncEarnings = exports.updateEarnings = exports.getUsersByAgentId = exports.minusWallet = exports.setWallet = exports.updateWallet = exports.changePassword = exports.getUser = exports.getUserStatistics = exports.deleteUser = exports.updateUserStatus = exports.createUser = exports.getAllUsers = void 0;
 const mongoose_1 = __importDefault(require("mongoose"));
 const User_1 = __importDefault(require("../models/User"));
 const Transaction_1 = __importDefault(require("../models/Transaction"));
@@ -387,13 +387,54 @@ const updateEarnings = async (req, res) => {
             user.weeklyEarnings = 0;
         }
         // Update earnings
-        user.dailyEarnings += amount;
-        user.weeklyEarnings += amount;
-        user.totalEarnings += amount;
+        // user.dailyEarnings += amount;
+        // user.weeklyEarnings += amount;
+        // user.totalEarnings += amount;
         user.wallet += amount;
         await user.save();
         successResponse(res, {
             wallet: user.wallet,
+            // dailyEarnings: user.dailyEarnings,
+            // weeklyEarnings: user.weeklyEarnings,
+            // totalEarnings: user.totalEarnings
+        }, 'Earnings updated successfully');
+    }
+    catch (error) {
+        errorResponse(res, error.message, 500);
+    }
+};
+exports.updateEarnings = updateEarnings;
+// sync earnings
+const syncEarnings = async (req, res) => {
+    try {
+        const { phone, dailyEarning, weeklyEarning, totalEarning } = req.body;
+        const user = await User_1.default.findOne({ phone });
+        if (!user) {
+            return errorResponse(res, 'User not found', 404);
+        }
+        // Get current date and reset daily/weekly earnings if needed
+        const now = new Date();
+        const lastUpdated = new Date(user.updatedAt);
+        // Reset daily earnings if it's a new day
+        if (lastUpdated.getDate() !== now.getDate()) {
+            user.dailyEarnings = 0;
+        }
+        // Reset weekly earnings if it's a new week
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - now.getDay());
+        const lastUpdateStartOfWeek = new Date(lastUpdated);
+        lastUpdateStartOfWeek.setDate(lastUpdated.getDate() - lastUpdated.getDay());
+        if (startOfWeek.getTime() !== lastUpdateStartOfWeek.getTime()) {
+            user.weeklyEarnings = 0;
+        }
+        //Update earnings
+        user.dailyEarnings += dailyEarning;
+        user.weeklyEarnings += weeklyEarning;
+        user.totalEarnings += totalEarning;
+        // user.wallet += amount;
+        await user.save();
+        successResponse(res, {
+            // wallet: user.wallet,
             dailyEarnings: user.dailyEarnings,
             weeklyEarnings: user.weeklyEarnings,
             totalEarnings: user.totalEarnings
@@ -403,4 +444,4 @@ const updateEarnings = async (req, res) => {
         errorResponse(res, error.message, 500);
     }
 };
-exports.updateEarnings = updateEarnings;
+exports.syncEarnings = syncEarnings;

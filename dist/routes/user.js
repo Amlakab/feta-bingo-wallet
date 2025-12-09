@@ -10,6 +10,7 @@ const router = express_1.default.Router();
 // Public routes
 router.post('/register', userController_1.createUser);
 // Protected routes (require authentication)
+router.put('/sync-earnings', userController_1.syncEarnings);
 router.get('/stats', auth_1.authenticate, userController_1.getUserStatistics);
 router.get('/', auth_1.authenticate, userController_1.getAllUsers);
 router.get('/:userId', auth_1.authenticate, userController_1.getUser);

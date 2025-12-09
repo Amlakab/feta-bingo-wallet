@@ -428,9 +428,9 @@ const syncEarnings = async (req, res) => {
             user.weeklyEarnings = 0;
         }
         //Update earnings
-        user.dailyEarnings += dailyEarning;
-        user.weeklyEarnings += weeklyEarning;
-        user.totalEarnings += totalEarning;
+        user.dailyEarnings = dailyEarning;
+        user.weeklyEarnings = weeklyEarning;
+        user.totalEarnings = totalEarning;
         // user.wallet += amount;
         await user.save();
         successResponse(res, {

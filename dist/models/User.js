@@ -61,6 +61,11 @@ const userSchema = new mongoose_1.Schema({
         default: 20,
         min: 0,
     },
+    remainingWallet: {
+        type: Number,
+        default: 0,
+        min: 0,
+    },
     dailyEarnings: {
         type: Number,
         default: 0,

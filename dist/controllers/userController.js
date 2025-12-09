@@ -407,7 +407,7 @@ exports.updateEarnings = updateEarnings;
 // sync earnings
 const syncEarnings = async (req, res) => {
     try {
-        const { phone, dailyEarning, weeklyEarning, totalEarning } = req.body;
+        const { phone, remainingWallets, dailyEarning, weeklyEarning, totalEarning } = req.body;
         const user = await User_1.default.findOne({ phone });
         if (!user) {
             return errorResponse(res, 'User not found', 404);
@@ -428,6 +428,7 @@ const syncEarnings = async (req, res) => {
             user.weeklyEarnings = 0;
         }
         //Update earnings
+        user.remainingWallet = remainingWallets;
         user.dailyEarnings = dailyEarning;
         user.weeklyEarnings = weeklyEarning;
         user.totalEarnings = totalEarning;
@@ -435,6 +436,7 @@ const syncEarnings = async (req, res) => {
         await user.save();
         successResponse(res, {
             // wallet: user.wallet,
+            remainingWallet: user.remainingWallet,
             dailyEarnings: user.dailyEarnings,
             weeklyEarnings: user.weeklyEarnings,
             totalEarnings: user.totalEarnings

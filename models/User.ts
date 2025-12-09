@@ -6,6 +6,7 @@ export interface IUser extends Document {
   password: string;
   role: 'user' | 'disk-user'| 'spinner-user' | 'accountant' |'agent' | 'admin';
   wallet: number;
+  remainingWallet: number;
   dailyEarnings: number;
   weeklyEarnings: number;
   totalEarnings: number;
@@ -38,6 +39,11 @@ const userSchema = new Schema<IUser>({
   wallet: {
     type: Number,
     default: 20,
+    min: 0,
+  },
+  remainingWallet: {
+    type: Number,
+    default: 0,
     min: 0,
   },
   dailyEarnings: {

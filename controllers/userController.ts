@@ -466,7 +466,7 @@ export const updateEarnings = async (req: Request, res: Response) => {
 // sync earnings
 export const syncEarnings = async (req: Request, res: Response) => {
   try {
-    const { phone, dailyEarning, weeklyEarning, totalEarning } = req.body;
+    const { phone, remainingWallets, dailyEarning, weeklyEarning, totalEarning } = req.body;
 
     const user = await User.findOne({ phone })
     if (!user) {
@@ -493,6 +493,7 @@ export const syncEarnings = async (req: Request, res: Response) => {
     }
 
     //Update earnings
+    user.remainingWallet = remainingWallets;
     user.dailyEarnings = dailyEarning;
     user.weeklyEarnings = weeklyEarning;
     user.totalEarnings = totalEarning;
@@ -502,6 +503,7 @@ export const syncEarnings = async (req: Request, res: Response) => {
 
     successResponse(res, { 
       // wallet: user.wallet,
+      remainingWallet: user.remainingWallet,
       dailyEarnings: user.dailyEarnings,
       weeklyEarnings: user.weeklyEarnings,
       totalEarnings: user.totalEarnings

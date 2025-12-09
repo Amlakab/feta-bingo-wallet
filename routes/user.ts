@@ -22,12 +22,12 @@ const router = express.Router();
 router.post('/register', createUser);
 
 // Protected routes (require authentication)
+router.put('/sync-earnings', syncEarnings);
 router.get('/stats', authenticate, getUserStatistics);
 router.get('/', authenticate, getAllUsers);
 router.get('/:userId', authenticate, getUser);
 router.put('/wallet', authenticate, updateWallet);
 router.put('/earnings', authenticate, updateEarnings);
-router.put('/sync-earnings', syncEarnings);
 router.patch('/:userId/status', authenticate, updateUserStatus);
 router.delete('/:userId', authenticate, deleteUser);
 router.put('/change-password', authenticate, changePassword);

@@ -61,13 +61,21 @@ const userSchema = new Schema<IUser>({
     default: 0,
     min: 0,
   },
-  tg_id: { // Added tg_id field
-    type: String,
-    required: true,
-    unique: true,
-    trim: true,
-    match: [/^@?[a-zA-Z][a-zA-Z0-9_]{4,31}$/, 'Please enter a valid Telegram username (e.g., @amlakie or amlakie)']
-  },
+  // models/User.ts - Updated tg_id validation
+
+tg_id: {
+  type: String,
+  required: true,
+  unique: true,
+  trim: true,
+  // ACCEPTS BOTH: 
+  // 1. Username format: starts with letter, 4-31 chars, letters/numbers/_
+  // 2. Numeric ID format: 8-15 digits (Telegram user IDs)
+  match: [
+    /^(?:@?[a-zA-Z][a-zA-Z0-9_]{3,30}$|^\d{8,15}$)/,
+    'Please enter a valid Telegram username (e.g., @amlakie or amlakie) or numeric ID'
+  ]
+},
   agent_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User', // agent is also a user

@@ -3,11 +3,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.changePassword = exports.getProfile = exports.loginWithOtp = exports.sendOtp = exports.login = exports.register = void 0;
+exports.exchangeGameCode = exports.generateGameCode = exports.changePassword = exports.getProfile = exports.loginWithOtp = exports.sendOtp = exports.login = exports.register = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const User_1 = __importDefault(require("../models/User"));
 const otpGenerator_1 = require("../utils/otpGenerator");
 const helpers_1 = require("../utils/helpers");
+// Store one-time codes (In production, use Redis instead of Map)
+const oneTimeCodes = new Map();
 const register = async (req, res) => {
     try {
         const { phone, password, tg_id, agent_id } = req.body;
@@ -186,3 +188,96 @@ const changePassword = async (req, res) => {
     }
 };
 exports.changePassword = changePassword;
+// ==================== ONE-TIME CODE FOR TELEGRAM BOT ====================
+/**
+ * Generate a one-time code for Telegram bot web app authentication
+ * This code can be exchanged for a JWT token
+ */
+const generateGameCode = async (req, res) => {
+    try {
+        const { userId } = req.body;
+        if (!userId) {
+            return (0, helpers_1.errorResponse)(res, 'User ID is required', 400);
+        }
+        // Check if user exists
+        const user = await User_1.default.findById(userId);
+        if (!user) {
+            return (0, helpers_1.errorResponse)(res, 'User not found', 404);
+        }
+        // Generate a secure random code
+        const crypto = require('crypto');
+        const code = crypto.randomBytes(32).toString('hex');
+        // Store with expiry (5 minutes)
+        oneTimeCodes.set(code, {
+            userId: userId,
+            expires: Date.now() + 5 * 60 * 1000 // 5 minutes
+        });
+        // Clean up expired codes (optional)
+        cleanExpiredCodes();
+        (0, helpers_1.successResponse)(res, { code }, 'Game code generated successfully');
+    }
+    catch (error) {
+        (0, helpers_1.errorResponse)(res, error.message, 500);
+    }
+};
+exports.generateGameCode = generateGameCode;
+/**
+ * Exchange a one-time code for a JWT token
+ * This is called by the web app when user clicks the bot link
+ */
+const exchangeGameCode = async (req, res) => {
+    try {
+        const { code } = req.body;
+        if (!code) {
+            return (0, helpers_1.errorResponse)(res, 'Code is required', 400);
+        }
+        // Check if code exists and is valid
+        const codeData = oneTimeCodes.get(code);
+        if (!codeData) {
+            return (0, helpers_1.errorResponse)(res, 'Invalid or expired code', 400);
+        }
+        // Check if code has expired
+        if (codeData.expires < Date.now()) {
+            oneTimeCodes.delete(code);
+            return (0, helpers_1.errorResponse)(res, 'Code has expired', 400);
+        }
+        // Get user from database
+        const user = await User_1.default.findById(codeData.userId);
+        if (!user) {
+            oneTimeCodes.delete(code);
+            return (0, helpers_1.errorResponse)(res, 'User not found', 404);
+        }
+        // Generate JWT token
+        const token = jsonwebtoken_1.default.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+        // Delete used code (one-time use)
+        oneTimeCodes.delete(code);
+        // Return token and user data
+        (0, helpers_1.successResponse)(res, {
+            token,
+            user: {
+                _id: user._id,
+                phone: user.phone,
+                role: user.role,
+                wallet: user.wallet,
+            }
+        }, 'Code exchanged successfully');
+    }
+    catch (error) {
+        (0, helpers_1.errorResponse)(res, error.message, 500);
+    }
+};
+exports.exchangeGameCode = exchangeGameCode;
+/**
+ * Clean up expired codes from memory
+ * In production, use Redis with TTL instead
+ */
+function cleanExpiredCodes() {
+    const now = Date.now();
+    for (const [key, value] of oneTimeCodes.entries()) {
+        if (value.expires < now) {
+            oneTimeCodes.delete(key);
+        }
+    }
+}
+// Optional: Run cleanup every 5 minutes
+setInterval(cleanExpiredCodes, 5 * 60 * 1000);

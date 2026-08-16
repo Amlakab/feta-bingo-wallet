@@ -26,7 +26,7 @@ router.put('/change-password', authenticate, changePassword);
 // Generate one-time code for bot (requires authentication)
 router.post('/generate-game-code', authenticate, generateGameCode);
 
-// Exchange code for token (public - but code is one-time and expires)
+// Exchange code for token (public -  but code is one-time and expires)
 router.post('/exchange-game-code', authLimiter, exchangeGameCode);
 
 

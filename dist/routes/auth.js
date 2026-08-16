@@ -18,6 +18,6 @@ router.put('/change-password', auth_1.authenticate, authController_1.changePassw
 // ==================== TELEGRAM BOT AUTH ROUTES ====================
 // Generate one-time code for bot (requires authentication)
 router.post('/generate-game-code', auth_1.authenticate, authController_1.generateGameCode);
-// Exchange code for token (public - but code is one-time and expires)
+// Exchange code for token (public -  but code is one-time and expires)
 router.post('/exchange-game-code', rateLimit_1.authLimiter, authController_1.exchangeGameCode);
 exports.default = router;

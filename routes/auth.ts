@@ -8,6 +8,7 @@ import {
   changePassword,
   generateGameCode,
   exchangeGameCode,
+  refreshToken, // ✅ Add this import
 } from '../controllers/authController';
 import { authenticate } from '../middleware/auth';
 import { validateRegistration, validateLogin } from '../middleware/validation';
@@ -23,12 +24,10 @@ router.get('/profile', authenticate, getProfile);
 router.put('/change-password', authenticate, changePassword);
 
 // ==================== TELEGRAM BOT AUTH ROUTES ====================
-// Generate one-time code for bot (requires authentication)
 router.post('/generate-game-code', authenticate, generateGameCode);
-
-// Exchange code for token (public -  but code is one-time and expires)
 router.post('/exchange-game-code', authLimiter, exchangeGameCode);
 
-
+// ✅ Add refresh token route (does NOT require authentication)
+router.post('/refresh-token', refreshToken);
 
 export default router;

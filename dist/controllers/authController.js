@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.exchangeGameCode = exports.generateGameCode = exports.changePassword = exports.getProfile = exports.loginWithOtp = exports.sendOtp = exports.login = exports.register = void 0;
+exports.exchangeGameCode = exports.generateGameCode = exports.refreshToken = exports.changePassword = exports.getProfile = exports.loginWithOtp = exports.sendOtp = exports.login = exports.register = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const User_1 = __importDefault(require("../models/User"));
 const otpGenerator_1 = require("../utils/otpGenerator");
@@ -188,6 +188,64 @@ const changePassword = async (req, res) => {
     }
 };
 exports.changePassword = changePassword;
+// ==================== REFRESH TOKEN ====================
+/**
+ * Refresh an expired token
+ * This endpoint takes an expired token and generates a new one
+ */
+const refreshToken = async (req, res) => {
+    try {
+        // Get the expired token from Authorization header
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return (0, helpers_1.errorResponse)(res, 'No token provided', 401);
+        }
+        const expiredToken = authHeader.split(' ')[1];
+        try {
+            // Try to verify the token (it should fail with TokenExpiredError)
+            jsonwebtoken_1.default.verify(expiredToken, process.env.JWT_SECRET);
+            // If it verifies, the token is not expired
+            return (0, helpers_1.errorResponse)(res, 'Token is still valid, no refresh needed', 400);
+        }
+        catch (error) {
+            // If error is not TokenExpiredError, token is invalid
+            if (error.name !== 'TokenExpiredError') {
+                return (0, helpers_1.errorResponse)(res, 'Invalid token', 401);
+            }
+        }
+        // Decode the expired token to get user ID
+        const decoded = jsonwebtoken_1.default.decode(expiredToken);
+        if (!decoded || !decoded.id) {
+            return (0, helpers_1.errorResponse)(res, 'Invalid token payload', 401);
+        }
+        // Find user in database
+        const user = await User_1.default.findById(decoded.id);
+        if (!user) {
+            return (0, helpers_1.errorResponse)(res, 'User not found', 404);
+        }
+        // Check if user is active
+        if (!user.isActive) {
+            return (0, helpers_1.errorResponse)(res, 'Your account has been deactivated. Please contact support.', 403);
+        }
+        // Generate new token
+        const newToken = jsonwebtoken_1.default.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+        // Return new token
+        (0, helpers_1.successResponse)(res, {
+            token: newToken,
+            user: {
+                _id: user._id,
+                phone: user.phone,
+                role: user.role,
+                wallet: user.wallet,
+            }
+        }, 'Token refreshed successfully');
+    }
+    catch (error) {
+        console.error('Refresh token error:', error);
+        (0, helpers_1.errorResponse)(res, error.message, 500);
+    }
+};
+exports.refreshToken = refreshToken;
 // ==================== ONE-TIME CODE FOR TELEGRAM BOT ====================
 /**
  * Generate a one-time code for Telegram bot web app authentication

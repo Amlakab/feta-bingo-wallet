@@ -205,6 +205,75 @@ export const changePassword = async (req: Request, res: Response) => {
 };
 
 
+// ==================== REFRESH TOKEN ====================
+
+/**
+ * Refresh an expired token
+ * This endpoint takes an expired token and generates a new one
+ */
+export const refreshToken = async (req: Request, res: Response) => {
+  try {
+    // Get the expired token from Authorization header
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return errorResponse(res, 'No token provided', 401);
+    }
+
+    const expiredToken = authHeader.split(' ')[1];
+    
+    try {
+      // Try to verify the token (it should fail with TokenExpiredError)
+      jwt.verify(expiredToken, process.env.JWT_SECRET!);
+      // If it verifies, the token is not expired
+      return errorResponse(res, 'Token is still valid, no refresh needed', 400);
+    } catch (error: any) {
+      // If error is not TokenExpiredError, token is invalid
+      if (error.name !== 'TokenExpiredError') {
+        return errorResponse(res, 'Invalid token', 401);
+      }
+    }
+
+    // Decode the expired token to get user ID
+    const decoded = jwt.decode(expiredToken) as { id: string };
+    if (!decoded || !decoded.id) {
+      return errorResponse(res, 'Invalid token payload', 401);
+    }
+
+    // Find user in database
+    const user = await User.findById(decoded.id);
+    if (!user) {
+      return errorResponse(res, 'User not found', 404);
+    }
+
+    // Check if user is active
+    if (!user.isActive) {
+      return errorResponse(res, 'Your account has been deactivated. Please contact support.', 403);
+    }
+
+    // Generate new token
+    const newToken = jwt.sign(
+      { id: user._id },
+      process.env.JWT_SECRET!,
+      { expiresIn: '7d' }
+    );
+
+    // Return new token
+    successResponse(res, {
+      token: newToken,
+      user: {
+        _id: user._id,
+        phone: user.phone,
+        role: user.role,
+        wallet: user.wallet,
+      }
+    }, 'Token refreshed successfully');
+  } catch (error: any) {
+    console.error('Refresh token error:', error);
+    errorResponse(res, error.message, 500);
+  }
+};
+
+
 // ==================== ONE-TIME CODE FOR TELEGRAM BOT ====================
 
 /**

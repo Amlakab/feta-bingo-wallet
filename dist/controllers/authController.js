@@ -250,6 +250,10 @@ const checkUserAndToken = async (req, res) => {
         if (!user) {
             return (0, helpers_1.errorResponse)(res, 'User not found', 404);
         }
+        // ✅ ADD THIS BLOCK - Check if user is active
+        if (!user.isActive) {
+            return (0, helpers_1.errorResponse)(res, 'User account is deactivated. Please contact support.', 403);
+        }
         // ✅ STEP 2: User exists! Check if token is provided
         const authHeader = req.headers.authorization;
         // If no token provided, user exists but needs login

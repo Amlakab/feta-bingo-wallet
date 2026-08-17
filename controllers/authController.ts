@@ -277,6 +277,11 @@ export const checkUserAndToken = async (req: Request, res: Response) => {
       return errorResponse(res, 'User not found', 404);
     }
 
+    // ✅ ADD THIS BLOCK - Check if user is active
+    if (!user.isActive) {
+      return errorResponse(res, 'User account is deactivated. Please contact support.', 403);
+    }
+
     // ✅ STEP 2: User exists! Check if token is provided
     const authHeader = req.headers.authorization;
     

@@ -36,17 +36,37 @@ export const register = async (req: Request, res: Response) => {
     };
 
     // Only add agent_id if provided and valid
-    if (agent_id) {
-      // Optional: Verify that the agent exists
-      const agent = await User.findById(agent_id);
-      if (agent && (agent.role === 'agent' || agent.role === 'admin' || agent.role === 'user')) {
-        userData.agent_id = agent_id;
+    // if (agent_id) {
+    //   // Optional: Verify that the agent exists
+    //   const agent = await User.findById(agent_id);
+    //   if (agent && (agent.role === 'agent' || agent.role === 'admin' || agent.role === 'user')) {
+    //     userData.agent_id = agent_id;
+    //   }
+    //   // If agent doesn't exist or is not an agent/admin, you can choose to:
+    //   // 1. Skip adding agent_id (current behavior)
+    //   // 2. Return an error
+    //   // 3. Use a default agent
+    // }
+
+     // Handle referral/agent logic
+      if (agent_id) {
+        // ✅ Find the referrer by ID
+        const agent = await User.findById(agent_id);
+        
+        if (agent) {
+          // ✅ If agent is 'agent' or 'admin' → Set as agent_id (no bonus)
+          if (agent.role === 'agent' || agent.role === 'admin') {
+            userData.agent_id = agent_id;
+          } 
+          // ✅ If agent is 'user' → Add 20 birr bonus to their wallet
+          else if (agent.role === 'user') {
+            // agent is already the user found by agent_id
+            agent.wallet = (agent.wallet || 0) + 20;
+            await agent.save();
+            console.log(`🎁 Referral bonus: User ${agent_id} received 20 ETB from new user ${phone}`);
+          }
+        }
       }
-      // If agent doesn't exist or is not an agent/admin, you can choose to:
-      // 1. Skip adding agent_id (current behavior)
-      // 2. Return an error
-      // 3. Use a default agent
-    }
 
     // Create new user
     const user = new User(userData);

@@ -20,4 +20,6 @@ router.post('/generate-game-code', auth_1.authenticate, authController_1.generat
 router.post('/exchange-game-code', rateLimit_1.authLimiter, authController_1.exchangeGameCode);
 // ✅ Add refresh token route (does NOT require authentication)
 router.post('/refresh-token', authController_1.refreshToken);
+// ✅ Add this route (PUBLIC - no authentication required)
+router.get('/check-user/:tg_id', authController_1.checkUserByTelegramId);
 exports.default = router;

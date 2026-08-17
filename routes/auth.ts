@@ -8,7 +8,8 @@ import {
   changePassword,
   generateGameCode,
   exchangeGameCode,
-  refreshToken, // ✅ Add this import
+  refreshToken,
+  checkUserByTelegramId, // ✅ Add this import
 } from '../controllers/authController';
 import { authenticate } from '../middleware/auth';
 import { validateRegistration, validateLogin } from '../middleware/validation';
@@ -29,5 +30,8 @@ router.post('/exchange-game-code', authLimiter, exchangeGameCode);
 
 // ✅ Add refresh token route (does NOT require authentication)
 router.post('/refresh-token', refreshToken);
+
+// ✅ Add this route (PUBLIC - no authentication required)
+router.get('/check-user/:tg_id', checkUserByTelegramId);
 
 export default router;

@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.exchangeGameCode = exports.generateGameCode = exports.refreshToken = exports.changePassword = exports.getProfile = exports.loginWithOtp = exports.sendOtp = exports.login = exports.register = void 0;
+exports.exchangeGameCode = exports.generateGameCode = exports.refreshToken = exports.checkUserByTelegramId = exports.changePassword = exports.getProfile = exports.loginWithOtp = exports.sendOtp = exports.login = exports.register = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const User_1 = __importDefault(require("../models/User"));
 const otpGenerator_1 = require("../utils/otpGenerator");
@@ -37,7 +37,7 @@ const register = async (req, res) => {
         if (agent_id) {
             // Optional: Verify that the agent exists
             const agent = await User_1.default.findById(agent_id);
-            if (agent && (agent.role === 'agent' || agent.role === 'admin')) {
+            if (agent && (agent.role === 'agent' || agent.role === 'admin' || agent.role === 'user')) {
                 userData.agent_id = agent_id;
             }
             // If agent doesn't exist or is not an agent/admin, you can choose to:
@@ -188,6 +188,31 @@ const changePassword = async (req, res) => {
     }
 };
 exports.changePassword = changePassword;
+const checkUserByTelegramId = async (req, res) => {
+    try {
+        const { tg_id } = req.params;
+        if (!tg_id) {
+            return (0, helpers_1.errorResponse)(res, 'Telegram ID is required', 400);
+        }
+        const cleanTgId = tg_id.replace('@', '').trim();
+        const user = await User_1.default.findOne({ tg_id: cleanTgId });
+        if (!user) {
+            return (0, helpers_1.errorResponse)(res, 'User not found', 404);
+        }
+        (0, helpers_1.successResponse)(res, {
+            _id: user._id,
+            phone: user.phone,
+            role: user.role,
+            wallet: user.wallet,
+            isActive: user.isActive,
+            tg_id: user.tg_id
+        }, 'User found');
+    }
+    catch (error) {
+        (0, helpers_1.errorResponse)(res, error.message, 500);
+    }
+};
+exports.checkUserByTelegramId = checkUserByTelegramId;
 // ==================== REFRESH TOKEN ====================
 /**
  * Refresh an expired token

@@ -39,7 +39,7 @@ export const register = async (req: Request, res: Response) => {
     if (agent_id) {
       // Optional: Verify that the agent exists
       const agent = await User.findById(agent_id);
-      if (agent && (agent.role === 'agent' || agent.role === 'admin')) {
+      if (agent && (agent.role === 'agent' || agent.role === 'admin' || agent.role === 'user')) {
         userData.agent_id = agent_id;
       }
       // If agent doesn't exist or is not an agent/admin, you can choose to:
@@ -199,6 +199,34 @@ export const changePassword = async (req: Request, res: Response) => {
     await user.save();
 
     successResponse(res, null, 'Password updated successfully');
+  } catch (error: any) {
+    errorResponse(res, error.message, 500);
+  }
+};
+
+export const checkUserByTelegramId = async (req: Request, res: Response) => {
+  try {
+    const { tg_id } = req.params;
+    
+    if (!tg_id) {
+      return errorResponse(res, 'Telegram ID is required', 400);
+    }
+
+    const cleanTgId = tg_id.replace('@', '').trim();
+    const user = await User.findOne({ tg_id: cleanTgId });
+    
+    if (!user) {
+      return errorResponse(res, 'User not found', 404);
+    }
+
+    successResponse(res, {
+      _id: user._id,
+      phone: user.phone,
+      role: user.role,
+      wallet: user.wallet,
+      isActive: user.isActive,
+      tg_id: user.tg_id
+    }, 'User found');
   } catch (error: any) {
     errorResponse(res, error.message, 500);
   }

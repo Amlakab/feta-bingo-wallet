@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.exchangeGameCode = exports.generateGameCode = exports.refreshToken = exports.checkUserByTelegramId = exports.changePassword = exports.getProfile = exports.loginWithOtp = exports.sendOtp = exports.login = exports.register = void 0;
+exports.exchangeGameCode = exports.generateGameCode = exports.refreshToken = exports.checkUserAndToken = exports.checkUserByTelegramId = exports.changePassword = exports.getProfile = exports.loginWithOtp = exports.sendOtp = exports.login = exports.register = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const User_1 = __importDefault(require("../models/User"));
 const otpGenerator_1 = require("../utils/otpGenerator");
@@ -213,6 +213,100 @@ const checkUserByTelegramId = async (req, res) => {
     }
 };
 exports.checkUserByTelegramId = checkUserByTelegramId;
+/**
+ * ONE API TO RULE THEM ALL:
+ * - Checks if user exists
+ * - Validates token
+ * - Auto-refreshes token if expired
+ * - Returns appropriate status
+ */
+const checkUserAndToken = async (req, res) => {
+    try {
+        const { tg_id } = req.params;
+        if (!tg_id) {
+            return (0, helpers_1.errorResponse)(res, 'Telegram ID is required', 400);
+        }
+        const cleanTgId = tg_id.replace('@', '').trim();
+        // ✅ STEP 1: Check if user exists in database
+        const user = await User_1.default.findOne({ tg_id: cleanTgId });
+        if (!user) {
+            return (0, helpers_1.errorResponse)(res, 'User not found', 404);
+        }
+        // ✅ STEP 2: User exists! Check if token is provided
+        const authHeader = req.headers.authorization;
+        // If no token provided, user exists but needs login
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return (0, helpers_1.successResponse)(res, {
+                user: {
+                    _id: user._id,
+                    phone: user.phone,
+                    role: user.role,
+                    wallet: user.wallet,
+                    isActive: user.isActive,
+                    tg_id: user.tg_id,
+                },
+                token_status: 'missing'
+            }, 'User found but no token provided');
+        }
+        const token = authHeader.split(' ')[1];
+        // ✅ STEP 3: Verify the token
+        try {
+            const decoded = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET);
+            // Token is valid
+            return (0, helpers_1.successResponse)(res, {
+                user: {
+                    _id: user._id,
+                    phone: user.phone,
+                    role: user.role,
+                    wallet: user.wallet,
+                    isActive: user.isActive,
+                    tg_id: user.tg_id,
+                },
+                token_status: 'valid',
+                token: token
+            }, 'User found and token valid');
+        }
+        catch (error) {
+            // Token is invalid or expired
+            // ✅ STEP 4: If token expired, generate new token
+            if (error.name === 'TokenExpiredError') {
+                const newToken = jsonwebtoken_1.default.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+                return (0, helpers_1.successResponse)(res, {
+                    user: {
+                        _id: user._id,
+                        phone: user.phone,
+                        role: user.role,
+                        wallet: user.wallet,
+                        isActive: user.isActive,
+                        tg_id: user.tg_id,
+                    },
+                    token_status: 'refreshed',
+                    token: newToken
+                }, 'Token refreshed successfully');
+            }
+            // Token is invalid (not expired, just malformed or wrong signature)
+            // Try to generate a new token anyway (fallback)
+            const newToken = jsonwebtoken_1.default.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+            return (0, helpers_1.successResponse)(res, {
+                user: {
+                    _id: user._id,
+                    phone: user.phone,
+                    role: user.role,
+                    wallet: user.wallet,
+                    isActive: user.isActive,
+                    tg_id: user.tg_id
+                },
+                token_status: 'refreshed',
+                token: newToken
+            }, 'Token regenerated successfully');
+        }
+    }
+    catch (error) {
+        console.error('Check user and token error:', error);
+        (0, helpers_1.errorResponse)(res, error.message, 500);
+    }
+};
+exports.checkUserAndToken = checkUserAndToken;
 // ==================== REFRESH TOKEN ====================
 /**
  * Refresh an expired token

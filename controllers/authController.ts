@@ -233,6 +233,122 @@ export const checkUserByTelegramId = async (req: Request, res: Response) => {
 };
 
 
+/**
+ * ONE API TO RULE THEM ALL:
+ * - Checks if user exists
+ * - Validates token
+ * - Auto-refreshes token if expired
+ * - Returns appropriate status
+ */
+export const checkUserAndToken = async (req: Request, res: Response) => {
+  try {
+    const { tg_id } = req.params;
+    
+    if (!tg_id) {
+      return errorResponse(res, 'Telegram ID is required', 400);
+    }
+
+    const cleanTgId = tg_id.replace('@', '').trim();
+    
+    // ✅ STEP 1: Check if user exists in database
+    const user = await User.findOne({ tg_id: cleanTgId });
+    
+    if (!user) {
+      return errorResponse(res, 'User not found', 404);
+    }
+
+    // ✅ STEP 2: User exists! Check if token is provided
+    const authHeader = req.headers.authorization;
+    
+    // If no token provided, user exists but needs login
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return successResponse(res, {
+        user: {
+          _id: user._id,
+          phone: user.phone,
+          role: user.role,
+          wallet: user.wallet,
+          isActive: user.isActive,
+          tg_id: user.tg_id,
+        },
+        token_status: 'missing'
+      }, 'User found but no token provided');
+    }
+
+    const token = authHeader.split(' ')[1];
+    
+    // ✅ STEP 3: Verify the token
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET!);
+      
+      // Token is valid
+      return successResponse(res, {
+        user: {
+          _id: user._id,
+          phone: user.phone,
+          role: user.role,
+          wallet: user.wallet,
+          isActive: user.isActive,
+          tg_id: user.tg_id,
+        },
+        token_status: 'valid',
+        token: token
+      }, 'User found and token valid');
+      
+    } catch (error: any) {
+      // Token is invalid or expired
+      
+      // ✅ STEP 4: If token expired, generate new token
+      if (error.name === 'TokenExpiredError') {
+        const newToken = jwt.sign(
+          { id: user._id },
+          process.env.JWT_SECRET!,
+          { expiresIn: '7d' }
+        );
+        
+        return successResponse(res, {
+          user: {
+            _id: user._id,
+            phone: user.phone,
+            role: user.role,
+            wallet: user.wallet,
+            isActive: user.isActive,
+            tg_id: user.tg_id,
+          },
+          token_status: 'refreshed',
+          token: newToken
+        }, 'Token refreshed successfully');
+      }
+      
+      // Token is invalid (not expired, just malformed or wrong signature)
+      // Try to generate a new token anyway (fallback)
+      const newToken = jwt.sign(
+        { id: user._id },
+        process.env.JWT_SECRET!,
+        { expiresIn: '7d' }
+      );
+      
+      return successResponse(res, {
+        user: {
+          _id: user._id,
+          phone: user.phone,
+          role: user.role,
+          wallet: user.wallet,
+          isActive: user.isActive,
+          tg_id: user.tg_id
+        },
+        token_status: 'refreshed',
+        token: newToken
+      }, 'Token regenerated successfully');
+    }
+    
+  } catch (error: any) {
+    console.error('Check user and token error:', error);
+    errorResponse(res, error.message, 500);
+  }
+};
+
+
 // ==================== REFRESH TOKEN ====================
 
 /**

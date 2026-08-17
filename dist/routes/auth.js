@@ -22,4 +22,6 @@ router.post('/exchange-game-code', rateLimit_1.authLimiter, authController_1.exc
 router.post('/refresh-token', authController_1.refreshToken);
 // ✅ Add this route (PUBLIC - no authentication required)
 router.get('/check-user/:tg_id', authController_1.checkUserByTelegramId);
+// ✅ Single endpoint that checks user and token
+router.get('/check-user-token/:tg_id', authController_1.checkUserAndToken);
 exports.default = router;

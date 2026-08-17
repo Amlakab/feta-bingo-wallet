@@ -9,7 +9,8 @@ import {
   generateGameCode,
   exchangeGameCode,
   refreshToken,
-  checkUserByTelegramId, // ✅ Add this import
+  checkUserByTelegramId,
+  checkUserAndToken, // ✅ Add this import
 } from '../controllers/authController';
 import { authenticate } from '../middleware/auth';
 import { validateRegistration, validateLogin } from '../middleware/validation';
@@ -33,5 +34,8 @@ router.post('/refresh-token', refreshToken);
 
 // ✅ Add this route (PUBLIC - no authentication required)
 router.get('/check-user/:tg_id', checkUserByTelegramId);
+
+// ✅ Single endpoint that checks user and token
+router.get('/check-user-token/:tg_id', checkUserAndToken);
 
 export default router;

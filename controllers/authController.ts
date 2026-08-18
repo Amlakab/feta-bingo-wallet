@@ -277,16 +277,22 @@ export const checkUserAndToken = async (req: Request, res: Response) => {
       return errorResponse(res, 'User not found', 404);
     }
 
-    // ✅ ADD THIS BLOCK - Check if user is active
+    // ✅ Check if user is active
     if (!user.isActive) {
       return errorResponse(res, 'User account is deactivated. Please contact support.', 403);
     }
 
-    // ✅ STEP 2: User exists! Check if token is provided
     const authHeader = req.headers.authorization;
     
-    // If no token provided, user exists but needs login
+    // ✅ STEP 2: Check if token is provided
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      // ✅ Token MISSING - Generate new token
+      const newToken = jwt.sign(
+        { id: user._id },
+        process.env.JWT_SECRET!,
+        { expiresIn: '7d' }
+      );
+      
       return successResponse(res, {
         user: {
           _id: user._id,
@@ -296,8 +302,9 @@ export const checkUserAndToken = async (req: Request, res: Response) => {
           isActive: user.isActive,
           tg_id: user.tg_id,
         },
-        token_status: 'missing'
-      }, 'User found but no token provided');
+        token_status: 'refreshed',  // ✅ Indicates new token was generated
+        token: newToken               // ✅ Include the new token
+      }, 'Token generated successfully');
     }
 
     const token = authHeader.split(' ')[1];
@@ -321,32 +328,7 @@ export const checkUserAndToken = async (req: Request, res: Response) => {
       }, 'User found and token valid');
       
     } catch (error: any) {
-      // Token is invalid or expired
-      
-      // ✅ STEP 4: If token expired, generate new token
-      if (error.name === 'TokenExpiredError') {
-        const newToken = jwt.sign(
-          { id: user._id },
-          process.env.JWT_SECRET!,
-          { expiresIn: '7d' }
-        );
-        
-        return successResponse(res, {
-          user: {
-            _id: user._id,
-            phone: user.phone,
-            role: user.role,
-            wallet: user.wallet,
-            isActive: user.isActive,
-            tg_id: user.tg_id,
-          },
-          token_status: 'refreshed',
-          token: newToken
-        }, 'Token refreshed successfully');
-      }
-      
-      // Token is invalid (not expired, just malformed or wrong signature)
-      // Try to generate a new token anyway (fallback)
+      // ✅ STEP 4: Token INVALID or EXPIRED - Generate new token
       const newToken = jwt.sign(
         { id: user._id },
         process.env.JWT_SECRET!,
@@ -360,11 +342,11 @@ export const checkUserAndToken = async (req: Request, res: Response) => {
           role: user.role,
           wallet: user.wallet,
           isActive: user.isActive,
-          tg_id: user.tg_id
+          tg_id: user.tg_id,
         },
-        token_status: 'refreshed',
-        token: newToken
-      }, 'Token regenerated successfully');
+        token_status: 'refreshed',  // ✅ Indicates new token was generated
+        token: newToken               // ✅ Include the new token
+      }, 'Token refreshed successfully');
     }
     
   } catch (error: any) {

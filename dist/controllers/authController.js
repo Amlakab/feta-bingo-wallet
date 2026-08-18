@@ -250,14 +250,15 @@ const checkUserAndToken = async (req, res) => {
         if (!user) {
             return (0, helpers_1.errorResponse)(res, 'User not found', 404);
         }
-        // ✅ ADD THIS BLOCK - Check if user is active
+        // ✅ Check if user is active
         if (!user.isActive) {
             return (0, helpers_1.errorResponse)(res, 'User account is deactivated. Please contact support.', 403);
         }
-        // ✅ STEP 2: User exists! Check if token is provided
         const authHeader = req.headers.authorization;
-        // If no token provided, user exists but needs login
+        // ✅ STEP 2: Check if token is provided
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            // ✅ Token MISSING - Generate new token
+            const newToken = jsonwebtoken_1.default.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
             return (0, helpers_1.successResponse)(res, {
                 user: {
                     _id: user._id,
@@ -267,8 +268,9 @@ const checkUserAndToken = async (req, res) => {
                     isActive: user.isActive,
                     tg_id: user.tg_id,
                 },
-                token_status: 'missing'
-            }, 'User found but no token provided');
+                token_status: 'refreshed', // ✅ Indicates new token was generated
+                token: newToken // ✅ Include the new token
+            }, 'Token generated successfully');
         }
         const token = authHeader.split(' ')[1];
         // ✅ STEP 3: Verify the token
@@ -289,25 +291,7 @@ const checkUserAndToken = async (req, res) => {
             }, 'User found and token valid');
         }
         catch (error) {
-            // Token is invalid or expired
-            // ✅ STEP 4: If token expired, generate new token
-            if (error.name === 'TokenExpiredError') {
-                const newToken = jsonwebtoken_1.default.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
-                return (0, helpers_1.successResponse)(res, {
-                    user: {
-                        _id: user._id,
-                        phone: user.phone,
-                        role: user.role,
-                        wallet: user.wallet,
-                        isActive: user.isActive,
-                        tg_id: user.tg_id,
-                    },
-                    token_status: 'refreshed',
-                    token: newToken
-                }, 'Token refreshed successfully');
-            }
-            // Token is invalid (not expired, just malformed or wrong signature)
-            // Try to generate a new token anyway (fallback)
+            // ✅ STEP 4: Token INVALID or EXPIRED - Generate new token
             const newToken = jsonwebtoken_1.default.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
             return (0, helpers_1.successResponse)(res, {
                 user: {
@@ -316,11 +300,11 @@ const checkUserAndToken = async (req, res) => {
                     role: user.role,
                     wallet: user.wallet,
                     isActive: user.isActive,
-                    tg_id: user.tg_id
+                    tg_id: user.tg_id,
                 },
-                token_status: 'refreshed',
-                token: newToken
-            }, 'Token regenerated successfully');
+                token_status: 'refreshed', // ✅ Indicates new token was generated
+                token: newToken // ✅ Include the new token
+            }, 'Token refreshed successfully');
         }
     }
     catch (error) {

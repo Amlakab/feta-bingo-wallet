@@ -73,7 +73,7 @@ export const getAllUsers = async (req: Request, res: Response) => {
 // Create new user
 export const createUser = async (req: Request, res: Response) => {
   try {
-    const { phone, password, role, wallet } = req.body;
+    const { phone, password, role, wallet, tg_id } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ phone });
@@ -89,7 +89,7 @@ export const createUser = async (req: Request, res: Response) => {
       dailyEarnings: 0,
       weeklyEarnings: 0,
       totalEarnings: 0,
-      tg_id: '@fetabingo1221',
+      tg_id: tg_id || '@fetabingo1221',
       isActive: true
     });
 
